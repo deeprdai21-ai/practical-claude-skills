@@ -1,0 +1,57 @@
+{
+  "source_file": "sample-draft.md",
+  "claims": [
+    {
+      "id": 1,
+      "sentence": "Python 3.12 was [released on 2 October 2023](https://www.python.org/downloads/release/python-3120/?utm_source=newsletter&utm_medium=email).",
+      "urls": [
+        "https://www.python.org/downloads/release/python-3120/"
+      ]
+    },
+    {
+      "id": 2,
+      "sentence": "It brought [more flexible f-string parsing and even better error messages](https://www.python.org/downloads/release/python-3120/).",
+      "urls": [
+        "https://www.python.org/downloads/release/python-3120/"
+      ]
+    },
+    {
+      "id": 3,
+      "sentence": "The release also [removed the distutils package, which had been deprecated since Python 3.8](https://peps.python.org/pep-0632/).",
+      "urls": [
+        "https://peps.python.org/pep-0632/"
+      ]
+    },
+    {
+      "id": 4,
+      "sentence": "According to the release page, [Python 3.12 runs about 25% faster than Python 3.11](https://www.python.org/downloads/release/python-3120/).",
+      "urls": [
+        "https://www.python.org/downloads/release/python-3120/"
+      ]
+    },
+    {
+      "id": 5,
+      "sentence": "A year later, [Python 3.13 was released on 7 October 2024](https://docs.python.org/3/whatsnew/3.13.html).",
+      "urls": [
+        "https://docs.python.org/3/whatsnew/3.13.html"
+      ]
+    },
+    {
+      "id": 6,
+      "sentence": "Its headline change: [the interpreter now runs without the GIL by default](https://docs.python.org/3/whatsnew/3.13.html).",
+      "urls": [
+        "https://docs.python.org/3/whatsnew/3.13.html"
+      ]
+    }
+  ],
+  "uncited": [
+    {
+      "sentence": "More than half of professional developers now use Python at work."
+    }
+  ],
+  "sources_section_urls": [
+    "https://www.python.org/downloads/release/python-3120/",
+    "https://peps.python.org/pep-0632/",
+    "https://docs.python.org/3/whatsnew/3.13.html"
+  ]
+}

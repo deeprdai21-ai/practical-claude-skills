@@ -1,0 +1,104 @@
+{
+  "settings": {
+    "as_of": "2026-09-30",
+    "window_days": 90,
+    "window_start": "2026-07-03",
+    "lead_time_days": 7,
+    "safety_days": 7,
+    "target_cover_days": 30,
+    "matched_on": "product name",
+    "date_reading": "dayfirst (auto)",
+    "notes": [
+      "1 stock row has negative quantity (counted as 0), e.g. Vim Bar 3x200g",
+      "1 product sold in the last 90 days is not in the stock list (often a spelling difference between the files)"
+    ]
+  },
+  "products": 41,
+  "out_of_stock_count": 2,
+  "reorder_now_count": 7,
+  "est_lost_sales_per_day_total": 3575,
+  "note": "items: up to 8 most urgent out-of-stock (largest lost sales per day first), then up to 8 reorder-now (fewest days left first)",
+  "items": [
+    {
+      "product": "Tata Tea Gold 500g",
+      "status": "Out of stock",
+      "on_hand": 0,
+      "avg_daily": 11.4,
+      "days_of_cover": 0.0,
+      "suggested_order_qty": 504,
+      "est_lost_sales_per_day": 3422
+    },
+    {
+      "product": "Lays Classic 52g",
+      "status": "Out of stock",
+      "on_hand": 0,
+      "avg_daily": 7.6,
+      "days_of_cover": 0.0,
+      "suggested_order_qty": 337,
+      "est_lost_sales_per_day": 153
+    },
+    {
+      "product": "Parle-G 800g",
+      "status": "Reorder now",
+      "on_hand": 28,
+      "avg_daily": 9.0,
+      "days_of_cover": 3.1,
+      "suggested_order_qty": 370,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Maggi Noodles 12pk",
+      "status": "Reorder now",
+      "on_hand": 34,
+      "avg_daily": 8.8,
+      "days_of_cover": 3.9,
+      "suggested_order_qty": 354,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Surf Excel 1kg",
+      "status": "Reorder now",
+      "on_hand": 28,
+      "avg_daily": 6.5,
+      "days_of_cover": 4.3,
+      "suggested_order_qty": 258,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Fortune Sunflower Oil 1L",
+      "status": "Reorder now",
+      "on_hand": 40,
+      "avg_daily": 7.5,
+      "days_of_cover": 5.4,
+      "suggested_order_qty": 289,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Tata Salt 1kg",
+      "status": "Reorder now",
+      "on_hand": 76,
+      "avg_daily": 12.7,
+      "days_of_cover": 6.0,
+      "suggested_order_qty": 482,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Aashirvaad Atta 10kg",
+      "status": "Reorder now",
+      "on_hand": 39,
+      "avg_daily": 5.8,
+      "days_of_cover": 6.7,
+      "suggested_order_qty": 219,
+      "est_lost_sales_per_day": 0
+    },
+    {
+      "product": "Hide & Seek 120g",
+      "status": "Reorder now",
+      "on_hand": 16,
+      "avg_daily": 1.9,
+      "days_of_cover": 8.4,
+      "suggested_order_qty": 68,
+      "est_lost_sales_per_day": 0
+    }
+  ]
+}

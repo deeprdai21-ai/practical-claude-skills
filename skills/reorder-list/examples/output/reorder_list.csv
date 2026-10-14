@@ -1,0 +1,10 @@
+Product,Status,On hand,Avg daily sales,Days of stock left,Reorder point,Suggested order qty,Est. lost sales per day
+Tata Tea Gold 500g,Out of stock,0,11.44,0.0,161,504,3422
+Lays Classic 52g,Out of stock,0,7.64,0.0,108,337,153
+Parle-G 800g,Reorder now,28,9.04,3.1,127,370,
+Maggi Noodles 12pk,Reorder now,34,8.81,3.9,124,354,
+Surf Excel 1kg,Reorder now,28,6.5,4.3,91,258,
+Fortune Sunflower Oil 1L,Reorder now,40,7.46,5.4,105,289,
+Tata Salt 1kg,Reorder now,76,12.67,6.0,178,482,
+Aashirvaad Atta 10kg,Reorder now,39,5.84,6.7,82,219,
+Hide & Seek 120g,Reorder now,16,1.9,8.4,27,68,

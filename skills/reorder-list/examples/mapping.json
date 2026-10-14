@@ -1,0 +1,13 @@
+{
+ "stock": {
+  "product": "Item Name",
+  "qty": "Closing Qty",
+  "price": "MRP",
+  "warehouse": "Godown"
+ },
+ "sales": {
+  "date": "Voucher Date",
+  "product": "Particulars",
+  "qty": "Quantity"
+ }
+}
