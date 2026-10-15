@@ -27,7 +27,7 @@ If there are no cited claims at all, tell the user the text has no links to chec
 
 For each claim in `claims.json`, **open the linked page now with a web fetch**. Never rely on memory or on what the sentence says the page says. Then decide:
 
-- **verified:** the page supports the claim. A close paraphrase counts. Copy the supporting sentence from the page as the quote.
+- **verified:** the page supports the claim. A close paraphrase in the text counts. Copy the supporting sentence from the page, word for word, as the quote.
 - **partial:** the page supports part of it, but something differs: a number, date, period, metric name or unit, or the claim goes further than the page ("the largest" when the page says "one of the largest"). Quote the page and explain the gap in the note.
 - **unverified:** the page doesn't say it, couldn't be opened, or is paywalled. Explain which in the note.
 
@@ -35,6 +35,8 @@ Watch especially for:
 - **Numbers attached to the wrong thing:** the right figure for the wrong quarter, region or metric (revenue vs profit, GMV vs revenue, adjusted vs reported).
 - **Second-hand sources:** if the page only repeats someone else's figure, note the original organisation so the user can cite it directly.
 - **Out-of-date claims:** if the page is older and the claim is about "today", say so in the note.
+
+**Quotes are checked.** The report script downloads each source page itself and refuses any quote it can't find there, so copy quotes exactly, word for word, from the page. Spacing, quote marks and dashes don't matter, but every word and number must. To quote two separate parts of a page, put `…` between them. Quote at least a full phrase; very short quotes like "5%" are refused.
 
 When a claim has several links, check the one that carries the fact. When a page is long, search it for the key number or name rather than skimming.
 
@@ -51,11 +53,17 @@ Write the results to `check.json`:
 python scripts/make_report.py claims.json check.json --title "Fact-check: <title of the text>" --out check.md
 ```
 
-The script refuses to write the report if any claim is unchecked, or if a status is missing its quote or note. Fix what it lists and run it again. The tally line ("12 claims checked: 10 verified, 1 partial, 1 unverified") comes from the script. Don't count claims yourself.
+The script refuses to write the report if any claim is unchecked, if a status is missing its quote or note, or if a quote isn't on its source page. Fix what it lists and run it again:
+
+- **"the quote was not found":** open the page again and copy the exact text. If you can't find text on the page that supports the claim, change it to unverified. Never reword a quote to get past the check.
+
+If the script can't download a page (blocked network, paywall, a page that needs JavaScript, or a PDF), it doesn't fail: the report marks that quote "not machine-checked" with the reason. Don't use `--offline`; it's only for tests.
+
+The tally line ("12 claims checked: 10 verified, 1 partial, 1 unverified") comes from the script. Don't count claims yourself.
 
 ## Step 5: Reply
 
-1. The tally line from the script.
+1. The tally line from the script, and the line saying how many quotes were found on the downloaded pages. If some couldn't be machine-checked, say so plainly.
 2. The problems first: each partial or unverified claim in one or two lines, saying what the text says and what the source actually says.
 3. If the user wants it, a suggested correction for each problem, worded so the source supports it. Don't change verified sentences.
 4. Deliver `check.md` as a file, or paste it if you can't write files.
