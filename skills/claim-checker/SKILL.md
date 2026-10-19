@@ -63,7 +63,7 @@ The tally line ("12 claims checked: 10 verified, 1 partial, 1 unverified") comes
 
 ## Step 5: Reply
 
-1. The tally line from the script, and the line saying how many quotes were found on the downloaded pages. If some couldn't be machine-checked, say so plainly.
+1. The tally line from the script, and the line saying how many quotes were found on the downloaded pages. If some couldn't be machine-checked, say so plainly. If the script reports `quote_check_off_in_sandbox: true`, say in one sentence that the code couldn't reach the source websites, so the quotes were checked by you but not double-checked by the script, and that allowing code to access the web in the Claude app's settings turns that check on.
 2. The problems first: each partial or unverified claim in one or two lines, saying what the text says and what the source actually says.
 3. If the user wants it, a suggested correction for each problem, worded so the source supports it. Don't change verified sentences.
 4. Deliver `check.md` as a file, or paste it if you can't write files.

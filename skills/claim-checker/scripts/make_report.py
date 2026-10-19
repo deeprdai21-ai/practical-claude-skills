@@ -27,7 +27,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from quote_check import fetch_text, quote_long_enough, quote_on_page
+from quote_check import SANDBOX_BLOCKED, fetch_text, quote_long_enough, quote_on_page
 
 STATUSES = ("verified", "partial", "unverified")
 LABEL = {"verified": "✅ Verified", "partial": "⚠️ Partial", "unverified": "❌ Unverified"}
@@ -99,8 +99,14 @@ def main():
 
     quoted = [cid for cid, r in by_id.items() if r["status"] in ("verified", "partial") and r.get("quote")]
     found = sum(1 for cid in quoted if qcheck.get(cid, ("",))[0] == "found")
+    sandbox_off = bool(quoted) and found == 0 and all(qcheck.get(cid, ("", ""))[1] == SANDBOX_BLOCKED for cid in quoted)
     if a.offline:
         qline = "Quotes were not machine-checked against the pages (offline run)."
+    elif sandbox_off:
+        qline = ("**Quote check: off in this environment.** Claude opened every source, but the code couldn't reach "
+                 "the source websites, so the script could not download the pages to double-check the quotes word for word. "
+                 "In the Claude app, allowing code to access the web (network settings under Settings → Capabilities) "
+                 "turns this check on; in Claude Code it normally works.")
     elif quoted:
         qline = f"Quotes found on the downloaded source pages: {found} of {len(quoted)}."
         if found < len(quoted):
@@ -122,7 +128,7 @@ def main():
         if r.get("quote"):
             lines.append("")
             lines.append(f"> {r['quote'].strip()}")
-            if c["id"] in qcheck:
+            if c["id"] in qcheck and not sandbox_off:
                 state, why = qcheck[c["id"]]
                 lines.append("")
                 lines.append("**Quote check:** found on the page." if state == "found"
@@ -142,6 +148,7 @@ def main():
     print(json.dumps({"ok": True, "tally": tally_line, "counts": {s: tally.get(s, 0) for s in STATUSES},
                       "quotes_found_on_page": None if a.offline else found,
                       "quotes_not_machine_checked": None if a.offline else len(quoted) - found,
+                      "quote_check_off_in_sandbox": sandbox_off,
                       "uncited": len(claims.get("uncited", [])), "out": a.out}))
 
 

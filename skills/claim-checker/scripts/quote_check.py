@@ -99,6 +99,28 @@ def quote_long_enough(quote: str) -> bool:
     return sum(len(f) for f in fragments(quote)) >= MIN_QUOTE_CHARS
 
 
+SANDBOX_BLOCKED = "the code couldn't reach this site (network access is blocked or limited)"
+
+
+def describe_error(e: Exception) -> str:
+    """Turn a download error into a short plain-English reason."""
+    code = getattr(e, "code", None)
+    text = str(getattr(e, "reason", "") or e)
+    if "tunnel" in text.lower() or "proxy" in text.lower() or "name or service not known" in text.lower() \
+            or "temporary failure in name resolution" in text.lower() or "network is unreachable" in text.lower() \
+            or "getaddrinfo failed" in text.lower() or "nodename nor servname" in text.lower():
+        return SANDBOX_BLOCKED
+    if code in (401, 402, 403):
+        return f"the site refused the download (error {code}; often a paywall or bot block)"
+    if code == 404:
+        return "the page wasn't found (error 404)"
+    if code:
+        return f"the site returned error {code}"
+    if "timed out" in text.lower():
+        return "the site took too long to respond"
+    return f"the page couldn't be downloaded ({e.__class__.__name__})"
+
+
 def fetch_text(url: str) -> tuple[str | None, str]:
     """Return (page text, "") or (None, reason it couldn't be checked)."""
     if not re.match(r"https?://", url or ""):
@@ -114,8 +136,7 @@ def fetch_text(url: str) -> tuple[str | None, str]:
             raw = resp.read(MAX_BYTES)
             charset = resp.headers.get_content_charset() or "utf-8"
     except Exception as e:  # network blocked, 403/404, timeout, bad certificate...
-        msg = getattr(e, "reason", None) or getattr(e, "code", None) or e.__class__.__name__
-        return None, f"page could not be downloaded ({msg})"
+        return None, describe_error(e)
     # Some servers compress the page even when not asked; unpack it before reading.
     try:
         if raw[:2] == b"\x1f\x8b" or "gzip" in encoding:
