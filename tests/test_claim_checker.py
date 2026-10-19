@@ -168,7 +168,7 @@ def test_unreachable_page_is_flagged_not_passed(tmp_path, site):
     assert r.returncode == 0, r.stdout
     report = (tmp_path / "r.md").read_text()
     assert "Quotes found on the downloaded source pages: 0 of 2. 2 couldn't be machine-checked" in report
-    assert "not machine-checked: page could not be downloaded" in report
+    assert "not machine-checked: the page wasn't found (error 404)" in report
     assert "not machine-checked: the downloaded page has almost no text" in report
 
 
@@ -191,3 +191,18 @@ def test_compressed_page_is_unpacked_and_garbage_is_not_checked(tmp_path, site):
     report = (tmp_path / "r.md").read_text()
     assert "Quotes found on the downloaded source pages: 1 of 2." in report
     assert "not machine-checked: the downloaded page couldn't be read as text" in report
+
+
+def test_no_network_gives_one_clear_note(tmp_path):
+    (tmp_path / "d.md").write_text("Sales grew [12% in 2025](https://blocked-site.invalid/a). "
+                                   "The firm has [300 stores](https://blocked-site.invalid/b).")
+    run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
+    (tmp_path / "k.json").write_text(json.dumps([
+        {"id": 1, "status": "verified", "url": "https://blocked-site.invalid/a", "quote": "Sales grew 12% in 2025."},
+        {"id": 2, "status": "verified", "url": "https://blocked-site.invalid/b", "quote": "It now has 300 stores."},
+    ]))
+    r = run("make_report.py", "c.json", "k.json", "--out", "r.md", cwd=tmp_path)
+    assert r.returncode == 0, r.stdout
+    assert json.loads(r.stdout)["quote_check_off_in_sandbox"] is True
+    report = (tmp_path / "r.md").read_text()
+    assert "Quote check: off in this environment." in report and "not machine-checked:" not in report
