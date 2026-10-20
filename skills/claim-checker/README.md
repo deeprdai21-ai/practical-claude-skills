@@ -16,3 +16,8 @@ Three scripts keep it honest:
 In the Claude app, code can only reach the websites your settings allow. With the default setting ("Package managers only"), the report says plainly that the quote check is off. To turn it on, allow code to access the web in **Settings → Capabilities** (network egress / domain allowlist), then start a new chat. In a test of the same quote check inside my Verified Market Brief skill, with web access on, all 27 of 27 quotes were found on their pages. In Claude Code the check normally runs for every page.
 
 **Example:** [`examples/sample-draft.md`](examples/sample-draft.md) → [`examples/check.md`](examples/check.md). Three of its six claims misstate their sources: a 25% speed-up that the page gives as 5%, a deprecation dated to the wrong version, and an experimental feature described as the default.
+
+
+---
+
+**Want the full workflow?** [Verified Market Brief](https://deepakrodeai.gumroad.com/l/verified-market-brief) is the paid version: it researches a market or competitor question, writes a sourced ~550-word brief, then runs this fact-check on it. Its report opens with what the first draft got wrong.
