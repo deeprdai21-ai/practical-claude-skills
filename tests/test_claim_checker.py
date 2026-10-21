@@ -122,7 +122,8 @@ def test_quote_matching_rules():
     assert quote_on_page("delivering an estimated 5% overall performance improvement", text)
     assert quote_on_page("It's a \"big\" release - with many changes.", text)   # straight vs curly marks
     assert quote_on_page("Python 3.12 is the newest … performance improvement", text)
-    assert not quote_on_page("performance improvement … Python 3.12 is the newest", text)  # wrong order
+    assert quote_on_page("performance improvement … Python 3.12 is the newest", text)  # parts in any order
+    assert not quote_on_page("performance improvement … Python 3.13 is the newest", text)  # but every part must be there
     assert not quote_on_page("delivering an estimated 25% overall performance improvement", text)
     assert quote_on_page("Python 3.12 is the newest major release", text)
     assert not quote_on_page("Python 31.2 is the newest major release", text)   # digits keep their point
@@ -206,3 +207,70 @@ def test_no_network_gives_one_clear_note(tmp_path):
     assert json.loads(r.stdout)["quote_check_off_in_sandbox"] is True
     report = (tmp_path / "r.md").read_text()
     assert "Quote check: off in this environment." in report and "not machine-checked:" not in report
+
+
+# ---- numbers check: a verified claim's figures must be in its quote ----
+
+from numbers_check import missing_figures  # noqa: E402
+
+
+def test_numbers_rules():
+    assert missing_figures("runs about 25% faster", "an estimated 5% overall improvement") == ["25%"]
+    assert missing_figures("deprecated since Python 3.8", "In Python 3.10 and 3.11, deprecated") == ["3.8"]
+    assert missing_figures("sold 1,29,940 units in Q1 FY27", "sold 129,940 units") == []      # Indian commas, labels ignored
+    assert missing_figures("about 2.2 times", "a ratio of 2.17") == []                          # rounded to the claim's precision
+    assert missing_figures("10% growth", "14% growth") == ["10%"]                                # small round numbers must be exact
+    assert missing_figures("[Rs 15,664 crore](https://x.com/2026/07/a-123)", "Rs 15,664 crore") == []  # URL digits ignored
+    assert missing_figures("3 companies lead", "nothing") == []                                  # small counts ignored
+
+
+def _verified(tmp_path, claim_text, quote, **extra):
+    (tmp_path / "d.md").write_text(f"[{claim_text}](https://example.com/a).")
+    run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
+    (tmp_path / "k.json").write_text(json.dumps([dict({"id": 1, "status": "verified", "quote": quote}, **extra)]))
+    return run("make_report.py", "c.json", "k.json", "--out", "r.md", "--offline", cwd=tmp_path)
+
+
+def test_real_quote_that_does_not_support_the_number_is_refused(tmp_path):
+    r = _verified(tmp_path, "Python 3.12 runs about 25% faster than Python 3.11",
+                  "Python 3.12 … 3.11 … delivering an estimated 5% overall performance improvement")
+    assert r.returncode == 2
+    assert "figures aren't in its quote: 25%" in json.loads(r.stdout)["problems"][0]
+
+
+def test_explained_and_calculated_figures_are_shown_not_hidden(tmp_path):
+    r = _verified(tmp_path, "Python 3.12 was released on 2 October 2023", "Release date: Oct. 2, 2023",
+                  numbers_note="The source is the Python 3.12.0 release page itself.")
+    assert r.returncode == 0, r.stdout
+    assert "not in the quote: 3.12. Checker's explanation:" in (tmp_path / "r.md").read_text()
+    r = _verified(tmp_path / "..", "Ather's revenue was about 2.7 times Ola's (calculated)", "revenue of ₹1,216.92 crore")
+    assert r.returncode == 0, r.stdout
+    assert "writer's own calculation" in (tmp_path / ".." / "r.md").read_text()
+
+
+def test_k_suffix_counts_as_thousands():
+    assert missing_figures("about 525,000 units", "approximately 525k units") == []
+
+
+def _pdf(text):
+    canvas = pytest.importorskip("reportlab.pdfgen.canvas")
+    import io
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf)
+    y = 800
+    for line in text:
+        c.drawString(40, y, line)
+        y -= 16
+    c.save()
+    return buf.getvalue()
+
+
+def test_pdf_sources_are_read(tmp_path):
+    pytest.importorskip("pypdf")
+    from quote_check import PDF_PREFIX, quote_on_page
+    import quote_check
+    pdf = _pdf(["Consolidated net loss for the quarter narrowed to Rs 51 crore from Rs 178 crore a year ago."]
+               + ["Filler line of the results release for page length."] * 12)
+    text, why = quote_check.pdf_text(pdf)
+    assert text and text.startswith(PDF_PREFIX), why
+    assert quote_on_page("net loss for the quarter narrowed to Rs 51 crore from Rs 178 crore", text)
