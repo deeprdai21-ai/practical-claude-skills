@@ -49,14 +49,14 @@ pip install pandas openpyxl pytest
 python -m pytest tests
 ```
 
-The reorder calculations are checked against hand-worked examples. The claim-checker scripts are tested for link extraction, tracking-parameter cleanup, the report's refusal to accept a "verified" claim without a quote, and its refusal of a fabricated but plausible quote that isn't on the source page.
+The reorder calculations are checked against hand-worked examples. The claim-checker scripts are tested for link extraction, tracking-parameter cleanup, the report's refusal to accept a "verified" claim without a quote, its refusal of a fabricated but plausible quote that isn't on the source page, and its refusal of a real quote whose number doesn't match the claim ("25%" claimed, "5%" quoted).
 
 ## How they work
 
 Each skill is a `SKILL.md` (instructions Claude follows) plus small Python scripts:
 
 - **reorder-list:** `inspect_columns.py` finds the header row in messy exports and guesses the columns. `reorder_list.py` calculates average daily sales, days of stock left, reorder points and order quantities, and writes `reorder_list.csv` plus a `summary.json` that Claude reports from. The formulas are in the [SKILL.md](skills/reorder-list/SKILL.md#how-the-numbers-are-calculated).
-- **claim-checker:** `extract_claims.py` splits the text into sentences and lists every cited claim, plus figures that cite nothing. Claude opens each source and records a status and quote. `make_report.py` downloads each cited page, refuses any quote that isn't actually on it, validates the results and writes the report with an exact tally.
+- **claim-checker:** `extract_claims.py` splits the text into sentences and lists every cited claim, plus figures that cite nothing. Claude opens each source and records a status and quote. `make_report.py` downloads each cited page, refuses any quote that isn't actually on it, refuses a "verified" claim whose figures aren't in its quote, validates the results and writes the report with an exact tally.
 
 ## Licence
 
