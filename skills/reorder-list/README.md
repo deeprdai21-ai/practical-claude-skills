@@ -17,3 +17,7 @@ python scripts/reorder_list.py --stock "examples/Stock Summary.xlsx" --sales "ex
 ```
 
 The formulas and settings are in [SKILL.md](SKILL.md). The example data is made up.
+
+---
+
+**Want the full report?** [Inventory Health Check](https://deepakrodeai.gumroad.com/l/inventory-health-check) is the paid version: it adds dead stock, overstock, best sellers, margins and a 10-sheet Excel report to the reorder list.
