@@ -38,12 +38,20 @@ Watch especially for:
 
 **Quotes are checked.** The report script downloads each source page itself and refuses any quote it can't find there, so copy quotes exactly, word for word, from the page. Spacing, quote marks and dashes don't matter, but every word and number must. To quote two separate parts of a page, put `…` between them. Quote at least a full phrase; very short quotes like "5%" are refused.
 
+**Figures are checked too.** For a `verified` claim, every figure in the linked phrase (amounts, percentages, years, versions) must also appear in your quote, because a real quote that states a different number doesn't support the claim. The script compares numbers (ignoring commas, so 1,29,940 = 129,940, and rounding the quote to the claim's precision) and refuses a verified claim whose figures aren't in its quote. When that happens:
+- quote the part of the page that states the figure (join separate parts with `…`), or
+- mark the claim `partial` and say what the source actually says, or
+- only if the figure genuinely doesn't need to be in the quote (for example, it names the subject, like the version on that version's own release page), explain why in `"numbers_note"`. The report shows the explanation next to the claim, so never use it to wave a mismatch through.
+
+If a figure is the text's own calculation (marked "(calculated)", or you add `"calculated": true`), it isn't checked this way; check the arithmetic yourself and say so in the note.
+
 When a claim has several links, check the one that carries the fact. When a page is long, search it for the key number or name rather than skimming.
 
 Write the results to `check.json`:
 
 ```json
 [{"id": 1, "status": "verified", "url": "https://…", "quote": "exact text from the page", "note": ""},
+ {"id": 3, "status": "verified", "url": "https://…", "quote": "Release date: Oct. 2, 2023", "numbers_note": "3.12 names the release; this is its own release page."},
  {"id": 2, "status": "partial", "url": "https://…", "quote": "…", "note": "Source says 2022, the text says 2023."}]
 ```
 
@@ -53,17 +61,18 @@ Write the results to `check.json`:
 python scripts/make_report.py claims.json check.json --title "Fact-check: <title of the text>" --out check.md
 ```
 
-The script refuses to write the report if any claim is unchecked, if a status is missing its quote or note, or if a quote isn't on its source page. Fix what it lists and run it again:
+The script refuses to write the report if any claim is unchecked, if a status is missing its quote or note, if a verified claim's figures aren't in its quote, or if a quote isn't on its source page. Fix what it lists and run it again:
 
+- **"figures aren't in its quote":** see "Figures are checked too" above. Don't change the claim's numbers to match the quote unless the text really says that; if the source says something different, the claim is partial.
 - **"the quote was not found":** open the page again and copy the exact text. If you can't find text on the page that supports the claim, change it to unverified. Never reword a quote to get past the check.
 
-If the script can't download a page (blocked network, paywall, a page that needs JavaScript, or a PDF), it doesn't fail: the report marks that quote "not machine-checked" with the reason. Don't use `--offline`; it's only for tests.
+PDF sources are read too, when the pypdf library is available (it usually is in Claude's code environment). If the script can't download a page (blocked network, paywall, a page that needs JavaScript), or can't match a quote in a PDF's extracted text, it doesn't fail: the report marks that quote "not machine-checked" with the reason. Don't use `--offline`; it's only for tests.
 
 The tally line ("12 claims checked: 10 verified, 1 partial, 1 unverified") comes from the script. Don't count claims yourself.
 
 ## Step 5: Reply
 
-1. The tally line from the script, and the line saying how many quotes were found on the downloaded pages. If some couldn't be machine-checked, say so plainly. If the script reports `quote_check_off_in_sandbox: true`, say in one sentence that the code couldn't reach the source websites, so the quotes were checked by you but not double-checked by the script, and that allowing code to access the web in the Claude app's settings turns that check on.
+1. The tally line from the script, the line saying how many quotes were found on the downloaded pages, and the line about figures in verified claims (mention any the checker explained instead of quoting). If some couldn't be machine-checked, say so plainly. If the script reports `quote_check_off_in_sandbox: true`, say in one sentence that the code couldn't reach the source websites, so the quotes were checked by you but not double-checked by the script, and that allowing code to access the web in the Claude app's settings turns that check on.
 2. The problems first: each partial or unverified claim in one or two lines, saying what the text says and what the source actually says.
 3. If the user wants it, a suggested correction for each problem, worded so the source supports it. Don't change verified sentences.
 4. Deliver `check.md` as a file, or paste it if you can't write files.

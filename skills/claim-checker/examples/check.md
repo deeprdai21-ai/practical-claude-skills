@@ -4,6 +4,10 @@
 
 Quotes found on the downloaded source pages: 6 of 6.
 
+Figures in verified claims found in their quotes: 3 of 3 claims.
+
+_Code checks that each quote is on its page and that a verified claim's figures appear in its quote. Whether the quote fully supports the claim's wording is the checker's judgement._
+
 ### 3. ⚠️ Partial
 
 **Claim:** The release also [removed the distutils package, which had been deprecated since Python 3.8](https://peps.python.org/pep-0632/).
@@ -50,6 +54,8 @@ Quotes found on the downloaded source pages: 6 of 6.
 
 **Quote check:** found on the page.
 
+**Numbers check:** every figure in the claim is in the quote.
+
 ### 2. ✅ Verified
 
 **Claim:** It brought [more flexible f-string parsing and even better error messages](https://www.python.org/downloads/release/python-3120/).
@@ -60,6 +66,8 @@ Quotes found on the downloaded source pages: 6 of 6.
 
 **Quote check:** found on the page.
 
+**Numbers check:** every figure in the claim is in the quote.
+
 ### 5. ✅ Verified
 
 **Claim:** A year later, [Python 3.13 was released on 7 October 2024](https://docs.python.org/3/whatsnew/3.13.html).
@@ -69,6 +77,8 @@ Quotes found on the downloaded source pages: 6 of 6.
 > Python 3.13 was released on October 7, 2024.
 
 **Quote check:** found on the page.
+
+**Numbers check:** every figure in the claim is in the quote.
 
 ## Not checked: figures with no source
 

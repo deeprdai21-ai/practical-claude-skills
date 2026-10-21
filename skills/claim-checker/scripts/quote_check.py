@@ -6,7 +6,8 @@ Used by make_report.py so that a quote can't be invented: a "verified" or
 Matching ignores case, spaces and punctuation (quote marks, dashes, commas),
 but every word and number must match.
 Use "…" or "..." between separate parts of a page; each part must appear on
-the page, in order.
+the page (in any order: quoters don't always keep page order, and PDF
+layout can scramble it).
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from html.parser import HTMLParser
 
 MIN_QUOTE_CHARS = 12      # shorter quotes are too weak to count as evidence
 MIN_PAGE_CHARS = 200      # less text than this usually means a JavaScript-only page
-MAX_BYTES = 8_000_000
+MAX_BYTES = 40_000_000   # company PDFs (results letters) can be large
 TIMEOUT = 20
 
 _BLOCK = {"p", "div", "br", "li", "ul", "ol", "tr", "td", "th", "table", "section", "article",
@@ -84,15 +85,9 @@ def fragments(quote: str) -> list[str]:
 
 
 def quote_on_page(quote: str, page_text: str) -> bool:
-    """True if every part of the quote appears on the page, in order."""
+    """True if every part of the quote appears on the page (in any order)."""
     page = squash(page_text)
-    pos = 0
-    for f in fragments(quote):
-        i = page.find(f, pos)
-        if i < 0:
-            return False
-        pos = i + len(f)
-    return True
+    return all(f in page for f in fragments(quote))
 
 
 def quote_long_enough(quote: str) -> bool:
@@ -119,6 +114,27 @@ def describe_error(e: Exception) -> str:
     if "timed out" in text.lower():
         return "the site took too long to respond"
     return f"the page couldn't be downloaded ({e.__class__.__name__})"
+
+
+PDF_PREFIX = "\x00pdf\x00"  # marks text that came from a PDF (layout can scramble word order)
+
+
+def pdf_text(raw: bytes) -> tuple[str | None, str]:
+    try:
+        import io
+        import logging
+        from pypdf import PdfReader
+        logging.getLogger("pypdf").setLevel(logging.ERROR)  # don't flood the output with layout warnings
+    except ImportError:
+        return None, "the source is a PDF and the pypdf library isn't installed"
+    try:
+        reader = PdfReader(io.BytesIO(raw))
+        text = " ".join((page.extract_text() or "") for page in reader.pages[:60])
+    except Exception:
+        return None, "the PDF couldn't be read"
+    if len(text.strip()) < MIN_PAGE_CHARS:
+        return None, "the PDF has no readable text (it may be a scanned image)"
+    return PDF_PREFIX + text, ""
 
 
 def fetch_text(url: str) -> tuple[str | None, str]:
@@ -148,7 +164,7 @@ def fetch_text(url: str) -> tuple[str | None, str]:
     except zlib.error:
         return None, "the page came compressed and couldn't be unpacked"
     if "pdf" in ctype or raw[:5] == b"%PDF-":
-        return None, "the source is a PDF, which this check doesn't read"
+        return pdf_text(raw)
     text = raw.decode(charset, errors="replace")
     if "html" in ctype or "<html" in text[:2000].lower():
         text = html_to_text(text)
