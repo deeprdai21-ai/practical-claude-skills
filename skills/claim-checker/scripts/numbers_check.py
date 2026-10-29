@@ -15,6 +15,11 @@ Rules (kept simple and predictable):
     1,812), but small round numbers must be exact (claim 10% doesn't match 14%).
   - "525k" counts as 525,000.
   - Claims marked as the writer's own calculation are not checked here.
+
+Period labels (FY27, Q2, H1) are skipped as figures but checked separately by
+missing_periods(): every period label in the claim must also appear in the quote.
+The quote may spell it out: "fiscal 2027", "FY2026-27" or "2026-27" count as FY27,
+"second quarter" or "2Q" as Q2, "first half" or "1H" as H1.
 """
 
 from __future__ import annotations
@@ -72,3 +77,52 @@ def missing_figures(claim_text: str, quote_text: str) -> list[str]:
 
 def is_calculated(text: str) -> bool:
     return bool(CALC.search(text or ""))
+
+
+# --- period labels -------------------------------------------------------------
+
+_ORD = {"first": "1", "1st": "1", "second": "2", "2nd": "2", "third": "3", "3rd": "3", "fourth": "4", "4th": "4"}
+_FY = re.compile(r"(?<![A-Za-z])FY\s?'?(\d{4}|\d{2})(?:\s?[-–/]\s?(\d{4}|\d{2}))?(?!\d)", re.I)
+_FISCAL = re.compile(r"\b(?:fiscal|financial)(?:\s+year)?\s+(?:20)?(\d{2})(?:\s?[-–/]\s?(?:20)?(\d{2}))?(?!\d)", re.I)
+_RANGE = re.compile(r"(?<![\d.])20(\d{2})\s?[-–/]\s?(\d{2})(?![\d.])")  # 2026-27 (quote side only)
+_Q = re.compile(r"(?<![A-Za-z\d])(?:Q([1-4])|([1-4])Q)(?![\d])", re.I)
+_QWORD = re.compile(r"\b(first|1st|second|2nd|third|3rd|fourth|4th)[\s-]+quarter\b", re.I)
+_H = re.compile(r"(?<![A-Za-z\d])(?:H([12])|([12])H)(?![\d])", re.I)
+_HWORD = re.compile(r"\b(first|1st|second|2nd)[\s-]+half\b", re.I)
+
+
+def periods(text: str, spelled_out: bool = False) -> list[str]:
+    """Period labels in the text, normalised: FY27, Q2, H1.
+
+    spelled_out=True also reads the longer forms a source page uses
+    ("fiscal 2027", "second quarter", "2026-27"); used on the quote side.
+    """
+    text = _plain(text)
+    out = []
+
+    def add(label):
+        if label not in out:
+            out.append(label)
+
+    for m in _FY.finditer(text):
+        add("FY" + (m.group(2) or m.group(1))[-2:])
+    for m in _Q.finditer(text):
+        add("Q" + (m.group(1) or m.group(2)))
+    for m in _H.finditer(text):
+        add("H" + (m.group(1) or m.group(2)))
+    if spelled_out:
+        for m in _FISCAL.finditer(text):
+            add("FY" + (m.group(2) or m.group(1)))
+        for m in _RANGE.finditer(text):
+            add("FY" + m.group(2))
+        for m in _QWORD.finditer(text):
+            add("Q" + _ORD[m.group(1).lower()])
+        for m in _HWORD.finditer(text):
+            add("H" + _ORD[m.group(1).lower()])
+    return out
+
+
+def missing_periods(claim_text: str, quote_text: str) -> list[str]:
+    """Period labels in the claim (FY27, Q2, H1) that the quote doesn't mention."""
+    q = set(periods(quote_text, spelled_out=True))
+    return [p for p in periods(claim_text) if p not in q]

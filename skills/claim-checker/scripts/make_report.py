@@ -6,7 +6,8 @@ Usage:
 check.json is written by the assistant after opening each source:
   [{"id": 1, "status": "verified|partial|unverified",
     "url": "the source actually checked", "quote": "exact supporting text from the page",
-    "note": "what differs / why it couldn't be confirmed"}]
+    "note": "what differs / why it couldn't be confirmed",
+    "match": {"period": "yes|no|n/a", "measure": "yes|no|n/a", "subject": "yes|no|n/a"}}]
 
 Rules enforced (the script refuses to write the report otherwise):
   - every claim in claims.json has exactly one result
@@ -15,7 +16,12 @@ Rules enforced (the script refuses to write the report otherwise):
   - partial and unverified need a note explaining the gap
   - every figure in a "verified" claim must appear in its quote (numbers_check.py),
     unless the claim is the writer's own calculation or the result explains it in
-    "numbers_note"; the report shows which applies
+    "numbers_note"; the report shows which applies. Period labels in the claim
+    (FY27, Q2, H1) must be in the quote too ("fiscal 2027" counts as FY27)
+  - every "verified" claim needs the checker's three-part match check: is the quote
+    about the same period, the same measure and the same subject (company, group,
+    product) as the claim? Each answer is yes, no or n/a; any "no" means the claim
+    isn't verified (mark it partial)
   - every quote must really appear on its source page: the script downloads
     each page itself and refuses quotes it can't find there. Pages it can't
     download are marked "not machine-checked" in the report, never passed silently.
@@ -31,10 +37,11 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from numbers_check import is_calculated, missing_figures
+from numbers_check import is_calculated, missing_figures, missing_periods
 from quote_check import PDF_PREFIX, SANDBOX_BLOCKED, fetch_text, quote_long_enough, quote_on_page
 
 STATUSES = ("verified", "partial", "unverified")
+MATCH_KEYS = ("period", "measure", "subject")
 LABEL = {"verified": "✅ Verified", "partial": "⚠️ Partial", "unverified": "❌ Unverified"}
 
 
@@ -91,15 +98,38 @@ def main():
         if is_calculated(sentence[cid]) or r.get("calculated"):
             ncheck[cid] = ("calculated", [])
             continue
-        miss = missing_figures(text, r["quote"])
+        miss = missing_figures(text, r["quote"]) + missing_periods(text, r["quote"])
         if not miss:
             ncheck[cid] = ("ok", [])
         elif str(r.get("numbers_note", "")).strip():
             ncheck[cid] = ("explained", miss)
         else:
-            problems.append(f"claim {cid}: marked verified, but these figures aren't in its quote: {', '.join(miss)}. "
+            problems.append(f"claim {cid}: marked verified, but these figures or periods aren't in its quote: {', '.join(miss)}. "
                             "Quote the part of the page that states them (put … between parts), mark the claim partial, "
-                            "or say in numbers_note why the figure doesn't need to be in the quote")
+                            "or say in numbers_note why they don't need to be in the quote")
+
+    mcheck = {}  # claim id -> {"period": "yes", ...}
+    for cid, r in by_id.items():
+        if r.get("status") != "verified":
+            continue
+        m = r.get("match")
+        if not isinstance(m, dict):
+            problems.append(f"claim {cid}: 'verified' needs the match check: \"match\": {{\"period\": …, \"measure\": …, "
+                            "\"subject\": …}}, each yes, no or n/a: is the quote about the same period, the same measure "
+                            "and the same company, group or product as the claim?")
+            continue
+        answers = {k: str(m.get(k, "")).strip().lower() for k in MATCH_KEYS}
+        answers = {k: "n/a" if v in ("na", "n.a.", "not applicable") else v for k, v in answers.items()}
+        bad = [k for k, v in answers.items() if v not in ("yes", "no", "n/a")]
+        if bad:
+            problems.append(f"claim {cid}: the match check needs yes, no or n/a for: {', '.join(bad)}")
+            continue
+        no = [k for k, v in answers.items() if v == "no"]
+        if no:
+            problems.append(f"claim {cid}: the match check says the quote is about a different {' and '.join(no)}, "
+                            "so the claim isn't verified. Mark it partial and say what the source covers in the note")
+            continue
+        mcheck[cid] = answers
 
     claim_urls = {c["id"]: c["urls"] for c in claims["claims"]}
     qcheck = {}  # claim id -> ("found" | "not checked", reason)
@@ -155,11 +185,15 @@ def main():
     nl = ""
     if ncheck:
         ok = sum(st == "ok" for st, _ in ncheck.values())
-        nl = f"Figures in verified claims found in their quotes: {ok} of {len(ncheck)} claims."
+        nl = f"Figures and periods in verified claims found in their quotes: {ok} of {len(ncheck)} claims."
         ex = sum(st == "explained" for st, _ in ncheck.values())
         ca = sum(st == "calculated" for st, _ in ncheck.values())
         if ex:
             nl += f" {ex} explained by the checker instead (see each claim)."
+    ml = ""
+    if mcheck:
+        ml = (f"Same period, measure and subject confirmed by the checker for {len(mcheck)} of {len(mcheck)} verified "
+              f"claim{'s' if len(mcheck) != 1 else ''} (a yes/no judgement per claim; a \"no\" makes a claim partial).")
         if ca:
             nl += f" {ca} {'is a calculation' if ca == 1 else 'are calculations'}, not checked this way."
 
@@ -167,8 +201,13 @@ def main():
     if qline:
         lines += [qline, ""]
     if nl:
-        lines += [nl, "", "_Code checks that each quote is on its page and that a verified claim's figures appear in "
-                  "its quote. Whether the quote fully supports the claim's wording is the checker's judgement._", ""]
+        lines += [nl, ""]
+    if ml:
+        lines += [ml, ""]
+    if nl or ml:
+        lines += ["_Code checks that each quote is on its page and that a verified claim's figures appear in "
+                  "its quote. Whether the quote is about the same period, measure and subject, and fully supports the claim's "
+                  "wording, is the checker's judgement._", ""]
     order = sorted(claims["claims"], key=lambda c: (STATUSES.index(by_id[c["id"]]["status"]) * -1, c["id"]))
     for c in order:
         r = by_id[c["id"]]
@@ -189,12 +228,17 @@ def main():
             st, miss = ncheck[c["id"]]
             lines.append("")
             if st == "ok":
-                lines.append("**Numbers check:** every figure in the claim is in the quote.")
+                lines.append("**Numbers check:** every figure and period in the claim is in the quote.")
             elif st == "calculated":
                 lines.append("**Numbers check:** the claim is the writer's own calculation, so it isn't checked this way.")
             else:
                 lines.append(f"**Numbers check:** not in the quote: {', '.join(miss)}. "
                              f"Checker's explanation: {r['numbers_note'].strip()}")
+        if c["id"] in mcheck:
+            ans = mcheck[c["id"]]
+            lines.append("")
+            lines.append("**Match check (checker's judgement):** " + ", ".join(
+                f"same {k}: {ans[k]}" for k in MATCH_KEYS) + ".")
         if r.get("note"):
             lines.append("")
             lines.append(f"**Note:** {r['note'].strip()}")
@@ -212,6 +256,7 @@ def main():
                       "quotes_not_machine_checked": None if a.offline else len(quoted) - found,
                       "quote_check_off_in_sandbox": sandbox_off,
                       "numbers_check": {k: sum(st == k for st, _ in ncheck.values()) for k in ("ok", "explained", "calculated")},
+                      "match_check_confirmed": len(mcheck),
                       "uncited": len(claims.get("uncited", [])), "out": a.out}))
 
 

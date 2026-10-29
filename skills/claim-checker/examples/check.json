@@ -1,8 +1,8 @@
 [
- {"id": 1, "status": "verified", "url": "https://www.python.org/downloads/release/python-3120/", "quote": "Release date: Oct. 2, 2023", "note": ""},
- {"id": 2, "status": "verified", "url": "https://www.python.org/downloads/release/python-3120/", "quote": "More flexible f-string parsing, allowing many things previously disallowed … Even more improved error messages.", "note": ""},
+ {"id": 1, "status": "verified", "url": "https://www.python.org/downloads/release/python-3120/", "quote": "Release date: Oct. 2, 2023", "note": "", "match": {"period": "yes", "measure": "n/a", "subject": "yes"}},
+ {"id": 2, "status": "verified", "url": "https://www.python.org/downloads/release/python-3120/", "quote": "More flexible f-string parsing, allowing many things previously disallowed … Even more improved error messages.", "note": "", "match": {"period": "n/a", "measure": "n/a", "subject": "yes"}},
  {"id": 3, "status": "partial", "url": "https://peps.python.org/pep-0632/", "quote": "In Python 3.10 and 3.11, distutils will be formally marked as deprecated.", "note": "The removal is right (the PEP says \"Code that imports distutils will no longer work from Python 3.12\"), but it was deprecated in Python 3.10, not 3.8."},
  {"id": 4, "status": "partial", "url": "https://www.python.org/downloads/release/python-3120/", "quote": "delivering an estimated 5% overall performance improvement", "note": "The release page says about 5%, not 25%."},
- {"id": 5, "status": "verified", "url": "https://docs.python.org/3/whatsnew/3.13.html", "quote": "Python 3.13 was released on October 7, 2024.", "note": ""},
+ {"id": 5, "status": "verified", "url": "https://docs.python.org/3/whatsnew/3.13.html", "quote": "Python 3.13 was released on October 7, 2024.", "note": "", "match": {"period": "yes", "measure": "n/a", "subject": "yes"}},
  {"id": 6, "status": "partial", "url": "https://docs.python.org/3/whatsnew/3.13.html", "quote": "CPython now has experimental support for running in a free-threaded mode, with the global interpreter lock (GIL) disabled. … This is an experimental feature and therefore is not enabled by default.", "note": "Overstated: running without the GIL is experimental and off by default, not the default."}
 ]

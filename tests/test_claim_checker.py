@@ -26,6 +26,14 @@ It plans to hire 300 people. See https://example.com/b for details.
 """
 
 
+MATCH = {"period": "n/a", "measure": "yes", "subject": "yes"}
+
+
+def with_match(results):
+    """Verified results need the checker's match check; tests about other rules add a passing one."""
+    return [dict(r, match=r.get("match", MATCH)) if r.get("status") == "verified" else r for r in results]
+
+
 def run(script, *args, cwd):
     return subprocess.run([sys.executable, str(SCRIPTS / script), *args], cwd=cwd, capture_output=True, text=True)
 
@@ -132,7 +140,7 @@ def test_quote_matching_rules():
 def _report(tmp_path, site, results, *extra):
     (tmp_path / "d.md").write_text(f"Python 3.12 is [5% faster]({site}/release). It is a [big release]({site}/release).")
     run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
-    (tmp_path / "k.json").write_text(json.dumps(results))
+    (tmp_path / "k.json").write_text(json.dumps(with_match(results)))
     return run("make_report.py", "c.json", "k.json", "--out", "r.md", *extra, cwd=tmp_path)
 
 
@@ -198,10 +206,10 @@ def test_no_network_gives_one_clear_note(tmp_path):
     (tmp_path / "d.md").write_text("Sales grew [12% in 2025](https://blocked-site.invalid/a). "
                                    "The firm has [300 stores](https://blocked-site.invalid/b).")
     run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
-    (tmp_path / "k.json").write_text(json.dumps([
+    (tmp_path / "k.json").write_text(json.dumps(with_match([
         {"id": 1, "status": "verified", "url": "https://blocked-site.invalid/a", "quote": "Sales grew 12% in 2025."},
         {"id": 2, "status": "verified", "url": "https://blocked-site.invalid/b", "quote": "It now has 300 stores."},
-    ]))
+    ])))
     r = run("make_report.py", "c.json", "k.json", "--out", "r.md", cwd=tmp_path)
     assert r.returncode == 0, r.stdout
     assert json.loads(r.stdout)["quote_check_off_in_sandbox"] is True
@@ -227,7 +235,7 @@ def test_numbers_rules():
 def _verified(tmp_path, claim_text, quote, **extra):
     (tmp_path / "d.md").write_text(f"[{claim_text}](https://example.com/a).")
     run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
-    (tmp_path / "k.json").write_text(json.dumps([dict({"id": 1, "status": "verified", "quote": quote}, **extra)]))
+    (tmp_path / "k.json").write_text(json.dumps(with_match([dict({"id": 1, "status": "verified", "quote": quote}, **extra)])))
     return run("make_report.py", "c.json", "k.json", "--out", "r.md", "--offline", cwd=tmp_path)
 
 
@@ -235,7 +243,7 @@ def test_real_quote_that_does_not_support_the_number_is_refused(tmp_path):
     r = _verified(tmp_path, "Python 3.12 runs about 25% faster than Python 3.11",
                   "Python 3.12 … 3.11 … delivering an estimated 5% overall performance improvement")
     assert r.returncode == 2
-    assert "figures aren't in its quote: 25%" in json.loads(r.stdout)["problems"][0]
+    assert "aren't in its quote: 25%" in json.loads(r.stdout)["problems"][0]
 
 
 def test_explained_and_calculated_figures_are_shown_not_hidden(tmp_path):
@@ -274,3 +282,59 @@ def test_pdf_sources_are_read(tmp_path):
     text, why = quote_check.pdf_text(pdf)
     assert text and text.startswith(PDF_PREFIX), why
     assert quote_on_page("net loss for the quarter narrowed to Rs 51 crore from Rs 178 crore", text)
+
+
+# ---- v1.3: right number, wrong period / measure / subject ----
+# Cases suggested by readers: a real quote with the right number for the wrong
+# year, quarter, metric or population.
+
+from numbers_check import missing_periods  # noqa: E402
+
+
+def test_period_labels_must_match():
+    assert missing_periods("Revenue grew 25% in FY27", "Revenue grew 25% in FY26") == ["FY27"]
+    assert missing_periods("Revenue grew 25% in FY27", "revenue for fiscal 2027 grew 25%") == []
+    assert missing_periods("Q2 FY27 sales rose 25%", "sales in the second quarter of FY2026-27 rose 25%") == []
+    assert missing_periods("Q2 sales rose 25%", "Q1 sales rose 25%") == ["Q2"]
+    assert missing_periods("H1 profit doubled", "first-half profit doubled") == []
+    assert missing_periods("H1 profit doubled", "profit in the first half doubled") == []
+    assert missing_periods("FY27 revenue", "revenue for 2026-27") == []          # Indian fiscal-year range
+
+
+def test_wrong_year_or_period_with_the_right_number_is_refused(tmp_path):
+    r = _verified(tmp_path, "Revenue grew 25% in 2025", "Revenue grew 25% in 2024")
+    assert r.returncode == 2 and "aren't in its quote: 2025" in json.loads(r.stdout)["problems"][0]
+    r = _verified(tmp_path, "Revenue grew 25% in FY27", "Revenue grew 25% in FY26")
+    assert r.returncode == 2 and "aren't in its quote: FY27" in json.loads(r.stdout)["problems"][0]
+
+
+def _matched(tmp_path, match):
+    (tmp_path / "d.md").write_text("[25% of adults use the app](https://example.com/a).")
+    run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
+    res = {"id": 1, "status": "verified", "quote": "25% of teenagers use the app"}
+    if match is not None:
+        res["match"] = match
+    (tmp_path / "k.json").write_text(json.dumps([res]))
+    return run("make_report.py", "c.json", "k.json", "--out", "r.md", "--offline", cwd=tmp_path)
+
+
+def test_match_check_is_required_for_verified(tmp_path):
+    r = _matched(tmp_path, None)
+    assert r.returncode == 2 and "needs the match check" in json.loads(r.stdout)["problems"][0]
+    r = _matched(tmp_path, {"period": "n/a", "measure": "yes"})
+    assert r.returncode == 2 and "yes, no or n/a for: subject" in json.loads(r.stdout)["problems"][0]
+
+
+def test_wrong_population_or_metric_cannot_be_verified(tmp_path):
+    r = _matched(tmp_path, {"period": "n/a", "measure": "yes", "subject": "no"})   # adults vs teenagers
+    assert r.returncode == 2 and "different subject" in json.loads(r.stdout)["problems"][0]
+    r = _matched(tmp_path, {"period": "yes", "measure": "no", "subject": "yes"})   # profit vs revenue
+    assert r.returncode == 2 and "different measure" in json.loads(r.stdout)["problems"][0]
+
+
+def test_match_check_is_shown_in_the_report(tmp_path):
+    r = _matched(tmp_path, {"period": "N/A", "measure": "yes", "subject": "yes"})
+    assert r.returncode == 0, r.stdout
+    report = (tmp_path / "r.md").read_text()
+    assert "Same period, measure and subject confirmed by the checker for 1 of 1 verified claim" in report
+    assert "**Match check (checker's judgement):** same period: n/a, same measure: yes, same subject: yes." in report

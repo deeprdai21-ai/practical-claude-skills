@@ -4,9 +4,11 @@
 
 Quotes found on the downloaded source pages: 6 of 6.
 
-Figures in verified claims found in their quotes: 3 of 3 claims.
+Figures and periods in verified claims found in their quotes: 3 of 3 claims.
 
-_Code checks that each quote is on its page and that a verified claim's figures appear in its quote. Whether the quote fully supports the claim's wording is the checker's judgement._
+Same period, measure and subject confirmed by the checker for 3 of 3 verified claims (a yes/no judgement per claim; a "no" makes a claim partial).
+
+_Code checks that each quote is on its page and that a verified claim's figures appear in its quote. Whether the quote is about the same period, measure and subject, and fully supports the claim's wording, is the checker's judgement._
 
 ### 3. ⚠️ Partial
 
@@ -54,7 +56,9 @@ _Code checks that each quote is on its page and that a verified claim's figures 
 
 **Quote check:** found on the page.
 
-**Numbers check:** every figure in the claim is in the quote.
+**Numbers check:** every figure and period in the claim is in the quote.
+
+**Match check (checker's judgement):** same period: yes, same measure: n/a, same subject: yes.
 
 ### 2. ✅ Verified
 
@@ -66,7 +70,9 @@ _Code checks that each quote is on its page and that a verified claim's figures 
 
 **Quote check:** found on the page.
 
-**Numbers check:** every figure in the claim is in the quote.
+**Numbers check:** every figure and period in the claim is in the quote.
+
+**Match check (checker's judgement):** same period: n/a, same measure: n/a, same subject: yes.
 
 ### 5. ✅ Verified
 
@@ -78,7 +84,9 @@ _Code checks that each quote is on its page and that a verified claim's figures 
 
 **Quote check:** found on the page.
 
-**Numbers check:** every figure in the claim is in the quote.
+**Numbers check:** every figure and period in the claim is in the quote.
+
+**Match check (checker's judgement):** same period: yes, same measure: n/a, same subject: yes.
 
 ## Not checked: figures with no source
 
