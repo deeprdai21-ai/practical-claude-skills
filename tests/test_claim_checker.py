@@ -92,11 +92,19 @@ performance improvement.</p>
 """ + "<p>More release notes and filler text for the page body.</p>" * 10 + "</body></html>"
 
 
+GIL_PAGE = ("<html><body><p>CPython now has experimental support for running in a free-threaded mode. "
+            "This is an experimental feature and therefore is not enabled by default. "
+            "The free-threaded mode requires a different executable.</p>"
+            "<p>Release date: Oct. 2, 2023.</p>" + "<p>Filler text for the page body.</p>" * 10 + "</body></html>")
+
+
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         enc = None
         if self.path == "/release":
             body, ctype, code = PAGE.encode(), "text/html; charset=utf-8", 200
+        elif self.path == "/gil":
+            body, ctype, code = GIL_PAGE.encode(), "text/html; charset=utf-8", 200
         elif self.path == "/gzipped":       # like python.org: compressed even though not asked
             body, ctype, code, enc = gzip.compress(PAGE.encode()), "text/html; charset=utf-8", 200, "gzip"
         elif self.path == "/binary":
@@ -338,3 +346,46 @@ def test_match_check_is_shown_in_the_report(tmp_path):
     report = (tmp_path / "r.md").read_text()
     assert "Same period, measure and subject confirmed by the checker for 1 of 1 verified claim" in report
     assert "**Match check (checker's judgement):** same period: n/a, same measure: yes, same subject: yes." in report
+
+
+# ---- v1.3.1: sentence splices and cut-off negations (cases from pm25coder on dev.to) ----
+
+from quote_check import edge_words  # noqa: E402
+
+
+def test_quote_cannot_be_spliced_across_a_sentence_end():
+    text = html_to_text(GIL_PAGE)
+    assert not quote_on_page("enabled by default The free-threaded mode requires", text)   # full stop dropped
+    assert quote_on_page("enabled by default. The free-threaded mode requires", text)      # kept: really contiguous
+    assert quote_on_page("This is an experimental feature and therefore is not enabled by default.", text)
+    assert quote_on_page("Release date: Oct. 2, 2023", text)                                # abbreviations still match
+    assert quote_on_page("free-threaded mode … not enabled by default", text)               # parts across sentences via …
+
+
+def test_edge_check_finds_a_cut_off_not():
+    text = html_to_text(GIL_PAGE)
+    assert edge_words("enabled by default", text) == ['"not" just before "enabled by default"']
+    assert edge_words("is not enabled by default", text) == []
+    assert edge_words("Release date: Oct. 2, 2023", text) == []
+    page = "It works on Linux but only with extra flags. Next sentence here."
+    assert any('"but" just after' in w for w in edge_words("It works on Linux", page))
+    assert edge_words("Next sentence here", page) == []          # stops at the sentence end: "flags" isn't checked
+
+
+def _gil_report(tmp_path, site, result):
+    (tmp_path / "d.md").write_text(f"Python 3.13 [is enabled by default]({site}/gil).")
+    run("extract_claims.py", "d.md", "--out", "c.json", cwd=tmp_path)
+    (tmp_path / "k.json").write_text(json.dumps(with_match([dict({"id": 1, "url": f"{site}/gil"}, **result)])))
+    return run("make_report.py", "c.json", "k.json", "--out", "r.md", cwd=tmp_path)
+
+
+def test_verified_quote_with_cut_off_not_is_refused_or_explained(tmp_path, site):
+    r = _gil_report(tmp_path, site, {"status": "verified", "quote": "enabled by default"})
+    assert r.returncode == 2 and '"not" just before' in json.loads(r.stdout)["problems"][0]
+    r = _gil_report(tmp_path, site, {"status": "verified", "quote": "enabled by default",
+                                     "edge_note": "test only: explanation shown in the report"})
+    assert r.returncode == 0, r.stdout
+    assert "**Edge check:**" in (tmp_path / "r.md").read_text()
+    r = _gil_report(tmp_path, site, {"status": "partial", "quote": "is not enabled by default",
+                                     "note": "The page says it is not enabled by default."})
+    assert r.returncode == 0, r.stdout

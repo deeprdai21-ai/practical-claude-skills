@@ -25,6 +25,10 @@ Rules enforced (the script refuses to write the report otherwise):
   - every quote must really appear on its source page: the script downloads
     each page itself and refuses quotes it can't find there. Pages it can't
     download are marked "not machine-checked" in the report, never passed silently.
+    A quote can't run across a sentence end unless it keeps the full stop.
+  - edge check: for a "verified" claim, a negating or limiting word ("not", "only",
+    "unless", "but"…) just outside the quote on the page is refused unless the
+    result explains in "edge_note" why it doesn't change the meaning
     --offline skips the downloads (the report then says quotes weren't checked).
 """
 
@@ -38,7 +42,7 @@ from collections import Counter
 from pathlib import Path
 
 from numbers_check import is_calculated, missing_figures, missing_periods
-from quote_check import PDF_PREFIX, SANDBOX_BLOCKED, fetch_text, quote_long_enough, quote_on_page
+from quote_check import PDF_PREFIX, SANDBOX_BLOCKED, edge_words, fetch_text, quote_long_enough, quote_on_page
 
 STATUSES = ("verified", "partial", "unverified")
 MATCH_KEYS = ("period", "measure", "subject")
@@ -133,6 +137,7 @@ def main():
 
     claim_urls = {c["id"]: c["urls"] for c in claims["claims"]}
     qcheck = {}  # claim id -> ("found" | "not checked", reason)
+    echeck = {}  # claim id -> ("clean" | "explained", edge words)
     if not a.offline:
         pages = {}
         for cid, r in by_id.items():
@@ -151,6 +156,17 @@ def main():
                 qcheck[cid] = ("not checked", reason)
             elif quote_on_page(quote, text):
                 qcheck[cid] = ("found", "")
+                if r.get("status") == "verified":
+                    edges = edge_words(quote, text)
+                    if not edges:
+                        echeck[cid] = ("clean", [])
+                    elif str(r.get("edge_note", "")).strip():
+                        echeck[cid] = ("explained", edges)
+                    else:
+                        problems.append(f"claim {cid}: on the page, {'; '.join(edges)}. The quote may have cut off a word "
+                                        "that changes its meaning. Quote the whole sentence and judge the claim again "
+                                        "(mark it partial if the full sentence doesn't support it), or explain in edge_note "
+                                        "why the word doesn't change the meaning")
             elif text.startswith(PDF_PREFIX):
                 qcheck[cid] = ("not checked", "the quote couldn't be matched in the PDF's extracted text (PDF layout can scramble word order)")
             else:
@@ -190,6 +206,13 @@ def main():
         ca = sum(st == "calculated" for st, _ in ncheck.values())
         if ex:
             nl += f" {ex} explained by the checker instead (see each claim)."
+    el = ""
+    if echeck:
+        ok = sum(st == "clean" for st, _ in echeck.values())
+        el = (f"Edge check: no \"not\", \"only\", \"unless\" or similar word cut off at the edges of {ok} of "
+              f"{len(echeck)} verified quotes.")
+        if ok < len(echeck):
+            el += f" {len(echeck) - ok} explained by the checker (see each claim)."
     ml = ""
     if mcheck:
         ml = (f"Same period, measure and subject confirmed by the checker for {len(mcheck)} of {len(mcheck)} verified "
@@ -202,11 +225,13 @@ def main():
         lines += [qline, ""]
     if nl:
         lines += [nl, ""]
+    if el:
+        lines += [el, ""]
     if ml:
         lines += [ml, ""]
-    if nl or ml:
-        lines += ["_Code checks that each quote is on its page and that a verified claim's figures appear in "
-                  "its quote. Whether the quote is about the same period, measure and subject, and fully supports the claim's "
+    if nl or ml or el:
+        lines += ["_Code checks that each quote is on its page, that a verified claim's figures appear in its quote and that no \"not\" or \"unless\" was cut off at its edges. "
+                  "Whether the quote is about the same period, measure and subject, and fully supports the claim's "
                   "wording, is the checker's judgement._", ""]
     order = sorted(claims["claims"], key=lambda c: (STATUSES.index(by_id[c["id"]]["status"]) * -1, c["id"]))
     for c in order:
@@ -234,6 +259,10 @@ def main():
             else:
                 lines.append(f"**Numbers check:** not in the quote: {', '.join(miss)}. "
                              f"Checker's explanation: {r['numbers_note'].strip()}")
+        if c["id"] in echeck and echeck[c["id"]][0] == "explained" and not sandbox_off:
+            lines.append("")
+            lines.append(f"**Edge check:** {'; '.join(echeck[c['id']][1])}. "
+                         f"Checker's explanation: {r['edge_note'].strip()}")
         if c["id"] in mcheck:
             ans = mcheck[c["id"]]
             lines.append("")
@@ -257,6 +286,7 @@ def main():
                       "quote_check_off_in_sandbox": sandbox_off,
                       "numbers_check": {k: sum(st == k for st, _ in ncheck.values()) for k in ("ok", "explained", "calculated")},
                       "match_check_confirmed": len(mcheck),
+                      "edge_check": {k: sum(st == k for st, _ in echeck.values()) for k in ("clean", "explained")},
                       "uncited": len(claims.get("uncited", [])), "out": a.out}))
 
 

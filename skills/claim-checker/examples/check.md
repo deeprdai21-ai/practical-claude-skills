@@ -6,9 +6,11 @@ Quotes found on the downloaded source pages: 6 of 6.
 
 Figures and periods in verified claims found in their quotes: 3 of 3 claims.
 
+Edge check: no "not", "only", "unless" or similar word cut off at the edges of 3 of 3 verified quotes.
+
 Same period, measure and subject confirmed by the checker for 3 of 3 verified claims (a yes/no judgement per claim; a "no" makes a claim partial).
 
-_Code checks that each quote is on its page and that a verified claim's figures appear in its quote. Whether the quote is about the same period, measure and subject, and fully supports the claim's wording, is the checker's judgement._
+_Code checks that each quote is on its page, that a verified claim's figures appear in its quote and that no "not" or "unless" was cut off at its edges. Whether the quote is about the same period, measure and subject, and fully supports the claim's wording, is the checker's judgement._
 
 ### 3. ⚠️ Partial
 

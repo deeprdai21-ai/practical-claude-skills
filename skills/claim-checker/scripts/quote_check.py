@@ -4,7 +4,9 @@ Used by make_report.py so that a quote can't be invented: a "verified" or
 "partial" claim must quote text that is actually on the source page.
 
 Matching ignores case, spaces and punctuation (quote marks, dashes, commas),
-but every word and number must match.
+but every word and number must match, and the end of a sentence counts: a quote
+can't run from one sentence into the next unless it keeps the full stop, so two
+pieces of text spliced across a sentence boundary are refused.
 Use "…" or "..." between separate parts of a page; each part must appear on
 the page (in any order: quoters don't always keep page order, and PDF
 layout can scramble it).
@@ -61,24 +63,32 @@ def html_to_text(html: str) -> str:
     return re.sub(r"\s+", " ", "".join(p.parts)).strip()
 
 
+_SENT_END = re.compile(r"[.!?][\"')\]]*(?=\s|$)")  # a full stop, ! or ? that ends a sentence
+
+
 def squash(s: str) -> str:
     """Normalise for matching: keep only letters, digits, % and currency signs, lower case.
 
     Spaces, quote marks, dashes and other punctuation are dropped, so formatting
     differences don't matter, but the words and numbers must match exactly.
     A point or comma between two digits is kept, so 3.12 and 31.2 stay different.
+    The end of a sentence is kept as "|", so text from two sentences can't be
+    joined into one quote without its full stop.
     """
     s = unicodedata.normalize("NFKC", s).translate(_CHARS).lower()
+    s = _SENT_END.sub("\x02", s)
     s = re.sub(r"(?<=\d)[.,](?=\d)", lambda m: "\x00" if m.group() == "." else "\x01", s)
-    s = re.sub(r"[^\w%$€£₹¥\x00\x01]|_", "", s)
-    return s.replace("\x00", ".").replace("\x01", ",")
+    s = re.sub(r"[^\w%$€£₹¥\x00\x01\x02]|_", "", s)
+    return s.replace("\x00", ".").replace("\x01", ",").replace("\x02", "|")
+
+
+_ELLIPSIS = re.compile(r"\[\.\.\.\]|\[…\]|…|\.\.\.")
 
 
 def fragments(quote: str) -> list[str]:
-    parts = re.split(r"…|\.\.\.|\[\.\.\.\]|\[…\]", quote)
     out = []
-    for p in parts:
-        p = squash(p)
+    for p in _ELLIPSIS.split(quote):
+        p = squash(p).strip("|")  # a quote may start or stop at a sentence end
         if p:
             out.append(p)
     return out
@@ -91,7 +101,80 @@ def quote_on_page(quote: str, page_text: str) -> bool:
 
 
 def quote_long_enough(quote: str) -> bool:
-    return sum(len(f) for f in fragments(quote)) >= MIN_QUOTE_CHARS
+    return sum(len(f.replace("|", "")) for f in fragments(quote)) >= MIN_QUOTE_CHARS
+
+
+# --- edge check: was a "not" or an "unless" cut off at the edge of the quote? ------
+# A quote can be on the page and still say the opposite of the page, because it
+# starts just after "not" or stops just before "unless". After a quote is found,
+# look at the few words right before and after each part, within its sentence.
+
+LEFT_WORDS = {"not", "no", "never", "only", "unless", "except", "excluding", "without", "fewer", "less",
+              "neither", "nor", "hardly", "barely", "cannot", "isnt", "arent", "wasnt", "werent", "dont",
+              "doesnt", "didnt", "cant", "couldnt", "wont", "wouldnt", "shouldnt", "hasnt", "havent", "hadnt"}
+RIGHT_WORDS = {"if", "unless", "except", "excluding", "when", "but", "until", "only", "provided", "assuming",
+               "although", "though", "however", "not"}
+EDGE_WINDOW_LEFT = 3
+EDGE_WINDOW_RIGHT = 2
+
+
+def _word_tokens(text: str) -> list[str]:
+    """Words in matching form, with "|" for each sentence end."""
+    out = []
+    for piece in re.split(r"\s+", unicodedata.normalize("NFKC", text).translate(_CHARS)):
+        sq = squash(piece)
+        if not sq:
+            continue
+        for i, part in enumerate(sq.split("|")):
+            if i:
+                out.append("|")
+            if part:
+                out.append(part)
+    return out
+
+
+def edge_words(quote: str, page_text: str) -> list[str]:
+    """Negating or limiting words sitting just outside the quote on the page.
+
+    Returns e.g. ['not (before "enabled by default")']; an empty list means the
+    edges are clean, or the quote's words couldn't be lined up with the page's
+    (then nothing is claimed either way).
+    """
+    page = _word_tokens(page_text)
+    found = []
+    for part in _ELLIPSIS.split(quote):
+        q = _word_tokens(part)
+        while q and q[0] == "|":
+            q = q[1:]
+        while q and q[-1] == "|":
+            q = q[:-1]
+        if not q:
+            continue
+        hits, clean = [], False
+        n = len(q)
+        for i in range(len(page) - n + 1):
+            if page[i:i + n] != q:
+                continue
+            here = []
+            for t in reversed(page[max(0, i - EDGE_WINDOW_LEFT):i]):
+                if t == "|":
+                    break
+                if t in LEFT_WORDS:
+                    here.append(f'"{t}" just before')
+            for t in page[i + n:i + n + EDGE_WINDOW_RIGHT]:
+                if t == "|":
+                    break
+                if t in RIGHT_WORDS:
+                    here.append(f'"{t}" just after')
+            if not here:
+                clean = True
+                break
+            hits = here
+        if hits and not clean:
+            short = part.strip()
+            short = short if len(short) <= 60 else short[:57] + "…"
+            found += [f"{h} \"{short}\"" for h in hits]
+    return found
 
 
 SANDBOX_BLOCKED = "the code couldn't reach this site (network access is blocked or limited)"
