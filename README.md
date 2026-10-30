@@ -49,7 +49,7 @@ pip install pandas openpyxl pytest
 python -m pytest tests
 ```
 
-The reorder calculations are checked against hand-worked examples. The claim-checker scripts are tested for link extraction, tracking-parameter cleanup, the report's refusal to accept a "verified" claim without a quote, its refusal of a fabricated but plausible quote that isn't on the source page, its refusal of a real quote whose number doesn't match the claim ("25%" claimed, "5%" quoted), and the cases readers suggested after v1.2: the right number for the wrong year or fiscal period, the wrong metric, or the wrong group of people.
+The reorder calculations are checked against hand-worked examples. The claim-checker scripts are tested for link extraction, tracking-parameter cleanup, the report's refusal to accept a "verified" claim without a quote, its refusal of a fabricated but plausible quote that isn't on the source page, its refusal of a real quote whose number doesn't match the claim ("25%" claimed, "5%" quoted), and the cases readers suggested after v1.2: the right number for the wrong year or fiscal period, the wrong metric, or the wrong group of people, plus quotes spliced across two sentences and quotes that cut off a "not".
 
 ## How they work
 
