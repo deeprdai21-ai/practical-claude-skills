@@ -66,3 +66,5 @@ MIT. See [LICENSE](LICENSE). Issues and pull requests are welcome.
 
 Made by **Deepak Rode**, who builds AI agents and agent workflows with Claude.
 Fuller paid versions exist: [Inventory Health Check](https://deepakrodeai.gumroad.com/l/inventory-health-check) (adds dead stock, overstock, best sellers, margins and a 10-sheet Excel report) and [Verified Market Brief](https://deepakrodeai.gumroad.com/l/verified-market-brief) (researches and writes the brief, then fact-checks it).
+
+For writers and editors: Claim Checker Pro (https://deepakrodeai.gumroad.com/l/claim-checker-pro) also checks claims that name a source without linking it, gives every problem a severity and a suggested correction, and produces a formatted report.
